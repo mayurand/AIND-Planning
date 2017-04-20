@@ -45,6 +45,8 @@ class PgNode_s(PgNode):
     '''
     A planning graph node representing a state (literal fluent) from a planning
     problem.
+    
+    ** The state or proposition here contains multiple nodes i.e. PgNode(). 
 
     Args:
     ----------
@@ -102,6 +104,8 @@ class PgNode_s(PgNode):
 
 class PgNode_a(PgNode):
     '''A-type (action) Planning Graph node - inherited from PgNode
+    
+    ** This is set of actions Ai possible after state S(i-1) and before state Si
     '''
 
     def __init__(self, action: Action):
@@ -311,6 +315,29 @@ class PlanningGraph():
         #   set iff all prerequisite literals for the action hold in S0.  This can be accomplished by testing
         #   to see if a proposed PgNode_a has prenodes that are a subset of the previous S level.  Once an
         #   action node is added, it MUST be connected to the S node instances in the appropriate s_level set.
+        
+        preconds = []
+        
+        
+        ## Take all the pairs of preconditions in self.s_levels[level] that are non mutex
+        for i, clause1 in enumerate(self.s_levels[level]):
+            for clause2 in self.s_levels[level][i + 1:]:
+                if not clause1.is_mutex(clause2):
+                    preconds.append(clause1)
+                    
+        self.a_levels[level] = []
+        for action in self.all_actions:
+            ## Add the action which requires the preconditions from previous state
+            ## i.e. in self.s_levels[level] and also that any pair of preconditions 
+            ## be not in mutex of self.s_levels[level]
+            for clause in action.precond_pos:
+                if clause in preconds:
+                    self.a_levels[level].append(PgNode_a(action))
+                    
+            for clause in action.precond_neg:
+                if clause in preconds:
+                    self.a_levels[level].append(PgNode_a(action))
+
 
     def add_literal_level(self, level):
         ''' add an S (literal) level to the Planning Graph
@@ -416,6 +443,14 @@ class PlanningGraph():
         :param node_a2: PgNode_a
         :return: bool
         '''
+        
+        ## If we find a pair of precondition for actions node_a1 and node_a2
+        ## that are mutually exclusive then the actions are mutex
+        
+        ## Pseudo code
+        ## for all p1∈preconditions of node_a1
+        ##     for all p2∈preconditions of node_a2
+        ##        if pair (p1,p2)∈μP then return true
 
         # TODO test for Competing Needs between nodes
         return False
@@ -452,6 +487,8 @@ class PlanningGraph():
         :param node_s2: PgNode_s
         :return: bool
         '''
+        
+        
         # TODO test for negation between nodes
         return False
 
